@@ -19,3 +19,5 @@ lerna-debug.log*
 .pnpm-debug.log*
 zig-out/
 .zig-cache/
+
+example.conf
