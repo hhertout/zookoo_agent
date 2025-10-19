@@ -21,3 +21,6 @@ zig-out/
 .zig-cache/
 
 example.conf
+zookoo.yaml
+zookoo.yml
+zookoo.ini

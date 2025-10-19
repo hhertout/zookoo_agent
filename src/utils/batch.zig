@@ -20,6 +20,10 @@ pub const Batch = struct {
         };
     }
 
+    pub fn flush() void {
+        return;
+    }
+
     pub fn deinit(self: *Batch) void {
         self.contents.deinit(self.allocator);
     }
