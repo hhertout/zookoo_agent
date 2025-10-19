@@ -24,3 +24,4 @@ example.conf
 zookoo.yaml
 zookoo.yml
 zookoo.ini
+!example/zookoo.ini

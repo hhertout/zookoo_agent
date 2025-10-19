@@ -1,7 +1,7 @@
 <p align="center">
   <img src=".github/assets/zookoo.png" width="250">
 
-  <h1 align="center">Zookoo - Agent</h1>
+  <h1 align="center">Zookoo - Agent (building...)</h1>
     <p align="center">Scrape your internal metrics on your system !</p>
 </p>
 
