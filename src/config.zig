@@ -131,3 +131,19 @@ fn parseBool(value: []const u8) bool {
         std.mem.eql(u8, value, "1") or
         std.mem.eql(u8, value, "yes");
 }
+
+test "parseBool with true values" {
+    try std.testing.expect(parseBool("true") == true);
+    try std.testing.expect(parseBool("1") == true);
+    try std.testing.expect(parseBool("yes") == true);
+}
+
+test "parseBool with false values" {
+    try std.testing.expect(parseBool("false") == false);
+    try std.testing.expect(parseBool("0") == false);
+    try std.testing.expect(parseBool("no") == false);
+    try std.testing.expect(parseBool("") == false);
+    try std.testing.expect(parseBool("TRUE") == false);
+    try std.testing.expect(parseBool("True") == false);
+    try std.testing.expect(parseBool("random") == false);
+}

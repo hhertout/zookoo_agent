@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Zig
+      uses: goto-bus-stop/setup-zig@v2
+      with:
+        version: '0.13.0'
+
+    - name: Build for Linux x86_64
+      run: |
+        zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux
+        mkdir -p release
+        cp zig-out/bin/zookoo_agent release/zookoo_agent-linux-x86_64
+        chmod +x release/zookoo_agent-linux-x86_64
+
+    - name: Build for Linux aarch64
+      run: |
+        zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-linux
+        cp zig-out/bin/zookoo_agent release/zookoo_agent-linux-aarch64
+        chmod +x release/zookoo_agent-linux-aarch64
+
+    - name: Build for macOS x86_64
+      run: |
+        zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-macos
+        cp zig-out/bin/zookoo_agent release/zookoo_agent-macos-x86_64
+        chmod +x release/zookoo_agent-macos-x86_64
+
+    - name: Build for macOS aarch64
+      run: |
+        zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-macos
+        cp zig-out/bin/zookoo_agent release/zookoo_agent-macos-aarch64
+        chmod +x release/zookoo_agent-macos-aarch64
+
+    - name: Build for Windows x86_64
+      run: |
+        zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-windows
+        cp zig-out/bin/zookoo_agent.exe release/zookoo_agent-windows-x86_64.exe
+
+    - name: Calculate checksums
+      run: |
+        cd release
+        sha256sum * > SHA256SUMS
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          release/*
+        body: |
+          ## Zookoo Agent Release
+          
+          ### Downloads
+          - `zookoo_agent-linux-x86_64` - Linux x86_64
+          - `zookoo_agent-linux-aarch64` - Linux ARM64
+          - `zookoo_agent-macos-x86_64` - macOS Intel
+          - `zookoo_agent-macos-aarch64` - macOS Apple Silicon
+          - `zookoo_agent-windows-x86_64.exe` - Windows x86_64
+          
+          ### Checksums
+          See `SHA256SUMS` file for verification.
+          
+          ### Installation
+          ```bash
+          # Linux/macOS
+          chmod +x zookoo_agent-*
+          ./zookoo_agent-*
+          ```
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
