@@ -27,7 +27,3 @@ jobs:
 
     - name: Run tests
       run: zig build test
-
-    - name: Run tests with coverage
-      run: zig build test -Dtest-coverage
-      continue-on-error: true
