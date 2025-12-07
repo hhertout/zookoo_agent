@@ -11,3 +11,11 @@ run:
 test:
 	@echo "Running tests..."
 	@zig build test
+
+format:
+	@echo "Formatting code..."
+	@zig fmt .
+
+check-format:
+	@echo "Checking code formatting..."
+	@zig fmt --check .
