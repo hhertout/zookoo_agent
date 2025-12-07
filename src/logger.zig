@@ -51,7 +51,7 @@ pub const Logger = struct {
     }
 
     // Log a info message
-    pub fn info(self: *Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
+    pub fn info(self: *const Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
         if (@intFromEnum(self.level) > @intFromEnum(LogLevel.info)) return;
         var buf: [4096]u8 = undefined;
         var stdout = std.fs.File.stdout().writer(&buf);
@@ -65,7 +65,7 @@ pub const Logger = struct {
     }
 
     // Log a debug message
-    pub fn debug(self: *Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
+    pub fn debug(self: *const Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
         if (@intFromEnum(self.level) > @intFromEnum(LogLevel.debug)) return;
         var buf: [4096]u8 = undefined;
         var stdout = std.fs.File.stdout().writer(&buf);
@@ -79,7 +79,7 @@ pub const Logger = struct {
     }
 
     // Log a warning message
-    pub fn warn(self: *Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
+    pub fn warn(self: *const Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
         if (@intFromEnum(self.level) > @intFromEnum(LogLevel.warn)) return;
         var buf: [4096]u8 = undefined;
         var stdout = std.fs.File.stdout().writer(&buf);
@@ -93,7 +93,7 @@ pub const Logger = struct {
     }
 
     // Log an error message
-    pub fn err(self: *Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
+    pub fn err(self: *const Logger, comptime kind: []const u8, comptime fmt: []const u8, args: anytype) void {
         if (@intFromEnum(self.level) > @intFromEnum(LogLevel.err)) return;
         var buf: [4096]u8 = undefined;
         var stdout = std.fs.File.stderr().writer(&buf);

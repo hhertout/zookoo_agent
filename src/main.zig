@@ -5,6 +5,7 @@ const scheduler = @import("utils/scheduler.zig");
 const batch = @import("utils/batch.zig");
 const config = @import("config.zig");
 const agent = @import("core/agent.zig");
+const State = @import("./state.zig").State;
 
 pub fn testFunc() void {
     return;
@@ -32,6 +33,7 @@ pub fn main() !void {
     log.info("agent_started", "Zookoo agent is now started 🚀", .{});
     log.info("runtime_info", "running on {s}", .{os});
 
-    try agent.launch();
+    const state = State.init(log);
+    try agent.launch(allocator, &state);
     // TODO
 }
