@@ -1,144 +1,160 @@
 const std = @import("std");
 
-// ============================================================================
-// Linux Memory Metrics Collector
-// ============================================================================
-//
-// Collects memory metrics from /proc/meminfo on Linux systems.
-//
-// METRICS COLLECTED:
-// ------------------
-// - total:      Total usable RAM (MemTotal)
-// - free:       Free RAM (MemFree)
-// - available:  Available memory for new applications (MemAvailable)
-// - buffers:    Memory used by kernel buffers (Buffers)
-// - cached:     Memory used for page cache (Cached)
-// - swap_total: Total swap space (SwapTotal)
-// - swap_free:  Free swap space (SwapFree)
-//
-// All values are in bytes.
-//
-// USAGE:
-// ------
-//   const memory = @import("collectors/memory.zig");
-//
-//   var metrics = try memory.collect();
-//   std.debug.print("Total: {} bytes\n", .{metrics.total});
-//   std.debug.print("Available: {} bytes\n", .{metrics.available});
-//   std.debug.print("Usage: {d:.1}%\n", .{metrics.usagePercent()});
-//
-// ============================================================================
+pub const Metric = struct {
+    mem_total: ?u64,
+    mem_free: ?u64,
+    mem_available: ?u64,
+    mem_buffers: ?u64,
+    mem_cached: ?u64,
+    mem_swap_total: ?u64,
+    mem_swap_free: ?u64,
+    mem_used: ?u64,
+    mem_usage_percent: ?u64,
+    swap_used: ?u64,
+    swap_usage_percent: ?u64,
 
-/// Memory metrics collected from the system
-pub const MemoryMetrics = struct {
-    /// Total usable RAM in bytes
-    total: u64 = 0,
-    /// Free RAM in bytes
-    free: u64 = 0,
-    /// Available memory for new applications in bytes
-    available: u64 = 0,
-    /// Memory used by kernel buffers in bytes
-    buffers: u64 = 0,
-    /// Memory used for page cache in bytes
-    cached: u64 = 0,
-    /// Total swap space in bytes
-    swap_total: u64 = 0,
-    /// Free swap space in bytes
-    swap_free: u64 = 0,
-
-    /// Calculate used memory in bytes (total - available)
-    pub fn used(self: MemoryMetrics) u64 {
-        if (self.available > self.total) return 0;
-        return self.total - self.available;
+    fn init() Metric {
+        return Metric{
+            .mem_total = null,
+            .mem_free = null,
+            .mem_available = null,
+            .mem_buffers = null,
+            .mem_cached = null,
+            .mem_swap_total = null,
+            .mem_swap_free = null,
+            .mem_used = null,
+            .mem_usage_percent = null,
+            .swap_used = null,
+            .swap_usage_percent = null,
+        };
     }
 
-    /// Calculate memory usage percentage (0-100)
-    pub fn usagePercent(self: MemoryMetrics) f64 {
-        if (self.total == 0) return 0;
-        return @as(f64, @floatFromInt(self.used())) / @as(f64, @floatFromInt(self.total)) * 100.0;
+    pub fn display(self: *const Metric, buf: []u8) ![]u8 {
+        return std.fmt.bufPrint(buf, "mem_total={d} mem_free={d} mem_available={d} mem_buffers={d} mem_cached={d} mem_swap_total={d} mem_swap_free={d} mem_used={d} mem_usage_percent={d} swap_used={d} swap_usage_percent={d}", .{
+            self.mem_total orelse 0,
+            self.mem_free orelse 0,
+            self.mem_available orelse 0,
+            self.mem_buffers orelse 0,
+            self.mem_cached orelse 0,
+            self.mem_swap_total orelse 0,
+            self.mem_swap_free orelse 0,
+            self.mem_used orelse 0,
+            self.mem_usage_percent orelse 0,
+            self.swap_used orelse 0,
+            self.swap_usage_percent orelse 0,
+        });
     }
 
-    /// Calculate swap usage in bytes
-    pub fn swapUsed(self: MemoryMetrics) u64 {
-        if (self.swap_free > self.swap_total) return 0;
-        return self.swap_total - self.swap_free;
+    fn computeMemUsed(self: *Metric) void {
+        const total = self.mem_total orelse 0;
+        const available = self.mem_available orelse 0;
+        if (available > total) {
+            self.mem_used = 0;
+        } else {
+            self.mem_used = total - available;
+        }
     }
 
-    /// Calculate swap usage percentage (0-100)
-    pub fn swapUsagePercent(self: MemoryMetrics) f64 {
-        if (self.swap_total == 0) return 0;
-        return @as(f64, @floatFromInt(self.swapUsed())) / @as(f64, @floatFromInt(self.swap_total)) * 100.0;
+    fn computeMemUsagePercent(self: *Metric) void {
+        const total = self.mem_total orelse 0;
+        const used = self.mem_used orelse 0;
+        if (total == 0) {
+            self.mem_usage_percent = 0;
+        } else {
+            self.mem_usage_percent = 100 * used / total;
+        }
+    }
+
+    fn computeSwapUsed(self: *Metric) void {
+        const total = self.mem_swap_total orelse 0;
+        const free = self.mem_swap_free orelse 0;
+        if (free > total) {
+            self.swap_used = 0;
+        } else {
+            self.swap_used = total - free;
+        }
+    }
+
+    fn computeSwapUsagePercent(self: *Metric) void {
+        const total = self.mem_swap_total orelse 0;
+        const used = self.swap_used orelse 0;
+        if (total == 0) {
+            self.swap_usage_percent = 0;
+        } else {
+            self.swap_usage_percent = 100 * used / total;
+        }
     }
 };
 
-/// Error types for memory collection
-pub const CollectError = error{
-    FileNotFound,
-    ReadError,
-    ParseError,
-    NotLinux,
-};
-
-/// Collect memory metrics from /proc/meminfo
-/// Returns a MemoryMetrics struct with current memory information
-pub fn collect() CollectError!MemoryMetrics {
-    // Check if we're on Linux
-    if (comptime @import("builtin").os.tag != .linux) {
-        return CollectError.NotLinux;
-    }
-
-    return collectFromFile("/proc/meminfo");
-}
-
-/// Collect memory metrics from a specific file (useful for testing)
-pub fn collectFromFile(path: []const u8) CollectError!MemoryMetrics {
-    const file = std.fs.openFileAbsolute(path, .{}) catch {
-        return CollectError.FileNotFound;
-    };
+// read /proc/meminfo and return raw metrics
+fn readMemInfo() !Metric {
+    const file = try std.fs.cwd().openFile("/proc/meminfo", .{});
     defer file.close();
 
-    var metrics = MemoryMetrics{};
-    var buf: [4096]u8 = undefined;
+    var buffer: [4096]u8 = undefined;
+    const bytes_read = try file.readAll(&buffer);
+    const content = buffer[0..bytes_read];
 
-    const bytes_read = file.readAll(&buf) catch {
-        return CollectError.ReadError;
-    };
+    return parseMemInfo(content);
+}
 
-    const content = buf[0..bytes_read];
-    var lines = std.mem.splitScalar(u8, content, '\n');
+// parse /proc/meminfo content to extract metrics
+fn parseMemInfo(fileContent: []const u8) !Metric {
+    var metrics = Metric.init();
+    var lines = std.mem.splitScalar(u8, fileContent, '\n');
 
     while (lines.next()) |line| {
         if (line.len == 0) continue;
 
-        // Parse line format: "FieldName:     12345 kB"
+        // Format: "FieldName:     12345 kB"
         const colon_pos = std.mem.indexOfScalar(u8, line, ':') orelse continue;
         const field_name = line[0..colon_pos];
         const value_part = std.mem.trim(u8, line[colon_pos + 1 ..], " \t");
 
-        // Extract numeric value (remove " kB" suffix if present)
+        // Extract numeric value (remove " kB" suffix)
         const space_pos = std.mem.indexOfScalar(u8, value_part, ' ') orelse value_part.len;
         const value_str = value_part[0..space_pos];
 
         const value_kb = std.fmt.parseInt(u64, value_str, 10) catch continue;
-        const value_bytes = value_kb * 1024; // Convert from kB to bytes
+        const value_bytes = value_kb * 1024; // Convert kB to bytes
 
-        // Match field names
         if (std.mem.eql(u8, field_name, "MemTotal")) {
-            metrics.total = value_bytes;
+            metrics.mem_total = value_bytes;
         } else if (std.mem.eql(u8, field_name, "MemFree")) {
-            metrics.free = value_bytes;
+            metrics.mem_free = value_bytes;
         } else if (std.mem.eql(u8, field_name, "MemAvailable")) {
-            metrics.available = value_bytes;
+            metrics.mem_available = value_bytes;
         } else if (std.mem.eql(u8, field_name, "Buffers")) {
-            metrics.buffers = value_bytes;
+            metrics.mem_buffers = value_bytes;
         } else if (std.mem.eql(u8, field_name, "Cached")) {
-            metrics.cached = value_bytes;
+            metrics.mem_cached = value_bytes;
         } else if (std.mem.eql(u8, field_name, "SwapTotal")) {
-            metrics.swap_total = value_bytes;
+            metrics.mem_swap_total = value_bytes;
         } else if (std.mem.eql(u8, field_name, "SwapFree")) {
-            metrics.swap_free = value_bytes;
+            metrics.mem_swap_free = value_bytes;
         }
     }
+
+    return metrics;
+}
+
+/// Collect error type
+pub const CollectError = error{
+    FileNotFound,
+    ReadError,
+};
+
+// retrieve all memory metrics - returns error instead of using state logger
+pub fn getMemoryMetrics() CollectError!Metric {
+    var metrics = readMemInfo() catch {
+        return CollectError.ReadError;
+    };
+
+    // compute derived metrics
+    metrics.computeMemUsed();
+    metrics.computeMemUsagePercent();
+    metrics.computeSwapUsed();
+    metrics.computeSwapUsagePercent();
 
     return metrics;
 }
@@ -147,40 +163,7 @@ pub fn collectFromFile(path: []const u8) CollectError!MemoryMetrics {
 // Tests
 // ============================================================================
 
-test "MemoryMetrics.used calculation" {
-    const metrics = MemoryMetrics{
-        .total = 16 * 1024 * 1024 * 1024, // 16 GB
-        .available = 8 * 1024 * 1024 * 1024, // 8 GB
-    };
-    try std.testing.expectEqual(@as(u64, 8 * 1024 * 1024 * 1024), metrics.used());
-}
-
-test "MemoryMetrics.usagePercent calculation" {
-    const metrics = MemoryMetrics{
-        .total = 100,
-        .available = 25,
-    };
-    try std.testing.expectApproxEqAbs(@as(f64, 75.0), metrics.usagePercent(), 0.01);
-}
-
-test "MemoryMetrics.usagePercent with zero total" {
-    const metrics = MemoryMetrics{
-        .total = 0,
-        .available = 0,
-    };
-    try std.testing.expectEqual(@as(f64, 0), metrics.usagePercent());
-}
-
-test "MemoryMetrics.swapUsed calculation" {
-    const metrics = MemoryMetrics{
-        .swap_total = 8 * 1024 * 1024 * 1024, // 8 GB
-        .swap_free = 6 * 1024 * 1024 * 1024, // 6 GB
-    };
-    try std.testing.expectEqual(@as(u64, 2 * 1024 * 1024 * 1024), metrics.swapUsed());
-}
-
-test "parse meminfo content" {
-    // Create a temporary test file
+test "parseMemInfo with valid content" {
     const test_content =
         \\MemTotal:       16384000 kB
         \\MemFree:         2048000 kB
@@ -191,21 +174,57 @@ test "parse meminfo content" {
         \\SwapFree:        8000000 kB
     ;
 
-    // Write to temp file
-    const tmp_path = "/tmp/zookoo_test_meminfo";
-    const tmp_file = std.fs.createFileAbsolute(tmp_path, .{}) catch return;
-    defer std.fs.deleteFileAbsolute(tmp_path) catch {};
-    tmp_file.writeAll(test_content) catch return;
-    tmp_file.close();
+    const metrics = try parseMemInfo(test_content);
 
-    // Parse it
-    const metrics = collectFromFile(tmp_path) catch return;
+    try std.testing.expectEqual(@as(u64, 16384000 * 1024), metrics.mem_total.?);
+    try std.testing.expectEqual(@as(u64, 2048000 * 1024), metrics.mem_free.?);
+    try std.testing.expectEqual(@as(u64, 8192000 * 1024), metrics.mem_available.?);
+    try std.testing.expectEqual(@as(u64, 512000 * 1024), metrics.mem_buffers.?);
+    try std.testing.expectEqual(@as(u64, 4096000 * 1024), metrics.mem_cached.?);
+    try std.testing.expectEqual(@as(u64, 8192000 * 1024), metrics.mem_swap_total.?);
+    try std.testing.expectEqual(@as(u64, 8000000 * 1024), metrics.mem_swap_free.?);
+}
 
-    try std.testing.expectEqual(@as(u64, 16384000 * 1024), metrics.total);
-    try std.testing.expectEqual(@as(u64, 2048000 * 1024), metrics.free);
-    try std.testing.expectEqual(@as(u64, 8192000 * 1024), metrics.available);
-    try std.testing.expectEqual(@as(u64, 512000 * 1024), metrics.buffers);
-    try std.testing.expectEqual(@as(u64, 4096000 * 1024), metrics.cached);
-    try std.testing.expectEqual(@as(u64, 8192000 * 1024), metrics.swap_total);
-    try std.testing.expectEqual(@as(u64, 8000000 * 1024), metrics.swap_free);
+test "computeMemUsed calculation" {
+    var metrics = Metric.init();
+    metrics.mem_total = 16 * 1024 * 1024 * 1024; // 16 GB
+    metrics.mem_available = 8 * 1024 * 1024 * 1024; // 8 GB
+
+    metrics.computeMemUsed();
+
+    try std.testing.expectEqual(@as(u64, 8 * 1024 * 1024 * 1024), metrics.mem_used.?);
+}
+
+test "computeMemUsagePercent calculation" {
+    var metrics = Metric.init();
+    metrics.mem_total = 100;
+    metrics.mem_used = 75;
+
+    metrics.computeMemUsagePercent();
+
+    try std.testing.expectEqual(@as(u64, 75), metrics.mem_usage_percent.?);
+}
+
+test "computeSwapUsed calculation" {
+    var metrics = Metric.init();
+    metrics.mem_swap_total = 8 * 1024 * 1024 * 1024; // 8 GB
+    metrics.mem_swap_free = 6 * 1024 * 1024 * 1024; // 6 GB
+
+    metrics.computeSwapUsed();
+
+    try std.testing.expectEqual(@as(u64, 2 * 1024 * 1024 * 1024), metrics.swap_used.?);
+}
+
+test "display formats correctly" {
+    var metrics = Metric.init();
+    metrics.mem_total = 1024;
+    metrics.mem_free = 512;
+    metrics.mem_available = 768;
+
+    var buf: [512]u8 = undefined;
+    const result = try metrics.display(&buf);
+
+    try std.testing.expect(std.mem.indexOf(u8, result, "mem_total=1024") != null);
+    try std.testing.expect(std.mem.indexOf(u8, result, "mem_free=512") != null);
+    try std.testing.expect(std.mem.indexOf(u8, result, "mem_available=768") != null);
 }

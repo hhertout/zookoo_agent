@@ -34,7 +34,8 @@ pub fn main() !void {
     log.info("agent_started", "Zookoo agent is now started", .{});
     log.info("runtime_info", "running on {s}", .{os});
 
-    State.init(log);
+    const state = State.init(log);
+    _ = state;
     // try agent.launch(allocator, &state);
     // TODO
 }
