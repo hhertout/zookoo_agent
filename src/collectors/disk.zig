@@ -163,7 +163,7 @@ fn isWholeDisk(name: []const u8) bool {
 
     // MMC/SD cards: mmcblk<N> (whole disk) vs mmcblk<N>p<N> (partition)
     if (std.mem.startsWith(u8, name, "mmcblk")) {
-        return std.mem.indexOf(u8, name, "p") == null or !endsWithDigit(name);
+        return std.mem.indexOfScalar(u8, name, 'p') == null or !endsWithDigit(name);
     }
 
     // SCSI/virtio/xen disks: sd<letter>, vd<letter>, xvd<letter>
