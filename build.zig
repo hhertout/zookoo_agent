@@ -159,6 +159,12 @@ pub fn build(b: *std.Build) void {
     const disk_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/collectors/disk.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_disk_tests = b.addRunArtifact(disk_tests);
+
     // Network collector tests
     const network_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -167,7 +173,6 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         }),
     });
-    const run_disk_tests = b.addRunArtifact(disk_tests);
     const run_network_tests = b.addRunArtifact(network_tests);
 
     // A top level step for running all tests. dependOn can be called multiple

@@ -109,6 +109,8 @@ fn parseConfig(allocator: std.mem.Allocator, content: []const u8) !Configuration
                 .disk => {
                     if (std.mem.eql(u8, key, "enable")) {
                         config.disk.enable = parseBool(value);
+                    }
+                },
                 .network => {
                     if (std.mem.eql(u8, key, "enable")) {
                         config.network.enable = parseBool(value);
