@@ -155,6 +155,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_memory_tests = b.addRunArtifact(memory_tests);
 
+    // Disk collector tests
+    const disk_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/collectors/disk.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_disk_tests = b.addRunArtifact(disk_tests);
+
     // Network collector tests
     const network_tests = b.addTest(.{
         .root_module = b.createModule(.{
@@ -173,6 +183,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_otel_tests.step);
     test_step.dependOn(&run_memory_tests.step);
+    test_step.dependOn(&run_disk_tests.step);
     test_step.dependOn(&run_network_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
