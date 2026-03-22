@@ -159,11 +159,16 @@ pub fn build(b: *std.Build) void {
     const disk_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/collectors/disk.zig"),
+    // Network collector tests
+    const network_tests = b.addTest(.{
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/collectors/network.zig"),
             .target = target,
             .optimize = optimize,
         }),
     });
     const run_disk_tests = b.addRunArtifact(disk_tests);
+    const run_network_tests = b.addRunArtifact(network_tests);
 
     // A top level step for running all tests. dependOn can be called multiple
     // times and since the two run steps do not depend on one another, this will
@@ -174,6 +179,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_otel_tests.step);
     test_step.dependOn(&run_memory_tests.step);
     test_step.dependOn(&run_disk_tests.step);
+    test_step.dependOn(&run_network_tests.step);
 
     // Just like flags, top level steps are also listed in the `--help` menu.
     //
