@@ -4,6 +4,7 @@ const std = @import("std");
 pub const ConfigSection = enum {
     cpu,
     memory,
+    network,
     processor,
     exporter,
 
@@ -16,12 +17,15 @@ pub const ConfigSection = enum {
 const Configuration = struct {
     cpu: CpuConfig,
     memory: MemoryConfig,
+    network: NetworkConfig,
     processor: ProcessorConfig,
     exporter: ExporterConfig,
 
     const CpuConfig = struct { enable: bool = false };
 
     const MemoryConfig = struct { enable: bool = false };
+
+    const NetworkConfig = struct { enable: bool = false };
 
     const ProcessorConfig = struct {
         batch_size: usize = 100,
@@ -41,6 +45,7 @@ const Configuration = struct {
         return Configuration{
             .cpu = .{},
             .memory = .{},
+            .network = .{},
             .processor = .{},
             .exporter = .{},
         };
@@ -95,6 +100,11 @@ fn parseConfig(allocator: std.mem.Allocator, content: []const u8) !Configuration
                 .memory => {
                     if (std.mem.eql(u8, key, "enable")) {
                         config.memory.enable = parseBool(value);
+                    }
+                },
+                .network => {
+                    if (std.mem.eql(u8, key, "enable")) {
+                        config.network.enable = parseBool(value);
                     }
                 },
                 .processor => {
